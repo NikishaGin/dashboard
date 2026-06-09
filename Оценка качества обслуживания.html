@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Оценка качества обслуживания — ФНС России</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@200;300;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css" />
+<style>
+:root{
+  --bg:#F0F4F8; --card:#FFFFFF; --sidebar:#1E293B; --sidebar-2:#0F172A;
+  --line:#F1F5F9; --border:#E2E8F0; --text:#0F172A; --text-2:#334155; --muted:#64748B;
+  --accent:#0EA5E9; --accent-strong:#0369A1; --accent-soft:#E0F2FE; --accent-line:#7DD3FC;
+  --neg:#D64045; --neg-bg:#FEF2F2; --neg-deep:#B23034;
+  --pos:#3A9E6F; --pos-bg:#F0FDF4; --pos-deep:#2E7D58;
+  --amber:#F0A500; --amber-bg:#FFFBEB; --amber-deep:#B57600; --amber-line:#FDE68A;
+  --neu:#94A3B8; --neu-bg:#F1F5F9; --neu-deep:#64748B;
+  --shadow:0 2px 8px rgba(15,23,42,.07);
+  --shadow-lift:0 8px 22px rgba(15,23,42,.13);
+  --t:.2s ease;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-2);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+.app{display:flex;min-height:100vh;min-width:1024px}
+
+/* ===== Main ===== */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{min-height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:18px;position:sticky;top:0;z-index:15;flex-wrap:wrap;row-gap:0}
+.topbar h1{font-size:19px;font-weight:500;letter-spacing:-.4px;line-height:1.2;color:var(--text)}
+.topbar .sp{flex:1}
+.tb-tools{display:flex;align-items:center;gap:12px}
+.daterange{display:flex;align-items:center;gap:8px}
+.dr-field{display:flex;align-items:center;gap:6px}
+.dr-lbl{font-size:12px;color:var(--muted);font-weight:500}
+.dr-input{width:130px;border:.5px solid rgba(0,0,0,.15);border-radius:6px;padding:5px 10px;font-size:12px;background:#fff;height:32px;font-family:inherit;color:var(--text-2);box-sizing:border-box}
+.dr-input:focus{outline:none;border-color:var(--accent)}
+.dr-dash{color:var(--muted)}
+.dr-apply{background:#1a1a1a;color:#fff;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;height:32px;transition:background var(--t)}
+.dr-apply:hover{background:#333}
+.dr-reset{background:#fff;color:var(--text-2);border:.5px solid rgba(0,0,0,.15);border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;height:32px;transition:background var(--t)}
+.dr-reset:hover{background:#f5f5f5}
+
+/* filter dropdown */
+.flt{position:relative}
+.flt-btn{display:flex;align-items:center;gap:10px;height:38px;padding:0 12px;background:#fff;border:1px solid #CBD5E1;border-radius:10px;transition:border-color var(--t),box-shadow var(--t)}
+.flt-btn:hover{border-color:#94A3B8}
+.flt.open .flt-btn{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.flt-cap{font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.flt-val{font-size:13px;font-weight:500;color:var(--text)}
+.flt-btn .chev{width:14px;height:14px;stroke:#94A3B8;stroke-width:2.2;fill:none;transition:transform var(--t)}
+.flt.open .flt-btn .chev{transform:rotate(180deg)}
+.flt-menu{display:none;position:absolute;top:46px;right:0;min-width:190px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lift);padding:6px;z-index:60}
+.flt.open .flt-menu{display:block}
+.flt-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text-2);cursor:pointer;transition:background var(--t)}
+.flt-opt:hover{background:#F1F5F9}
+.flt-opt.sel{background:var(--accent-soft);color:var(--accent-strong);font-weight:500}
+.flt-opt .tick{width:14px;height:14px;stroke:var(--accent-strong);stroke-width:2.5;fill:none;opacity:0}
+.flt-opt.sel .tick{opacity:1}
+.tb-updated{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3;padding-left:4px;border-left:1px solid var(--border);height:34px;justify-content:center;padding-left:14px}
+.tb-up-cap{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.tb-up-val{font-size:12px;font-weight:500;color:var(--text-2)}
+.tb-up-val .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--pos);margin-right:5px;vertical-align:middle;animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+.content{padding:24px 28px 56px;display:flex;flex-direction:column;gap:22px}
+
+/* ===== Cards ===== */
+.card{background:var(--card);border-radius:12px;box-shadow:var(--shadow);border:.5px solid #ECF1F6}
+.card-pad{padding:20px 22px}
+.block-head{margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.block-title{font-size:15px;font-weight:500;letter-spacing:-.2px;color:var(--text);line-height:1.3}
+.block-sub{font-size:12.5px;color:var(--muted);font-weight:400;margin-top:3px;line-height:1.5}
+.sec-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+
+/* ===== KPI row ===== */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.kpi{background:#fff;border-radius:12px;border:.5px solid #ECF1F6;box-shadow:var(--shadow);padding:18px 20px;display:flex;flex-direction:column;min-height:172px;transition:transform var(--t),box-shadow var(--t);cursor:default;position:relative;overflow:hidden}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.kpi.warn{background:linear-gradient(180deg,#FFFCFB,#fff)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kpi-l{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);line-height:1.4}
+.kpi-ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 28px;background:var(--accent-soft)}
+.kpi-ic svg{width:16px;height:16px;stroke:var(--accent-strong);stroke-width:2;fill:none}
+.kpi-ic.neg{background:var(--neg-bg)}.kpi-ic.neg svg{stroke:var(--neg-deep)}
+.kpi-ic.pos{background:var(--accent-soft)}.kpi-ic.pos svg{stroke:var(--accent-strong)}
+.kpi-ic.amb{background:var(--amber-bg)}.kpi-ic.amb svg{stroke:var(--amber-deep)}
+.kpi-v{font-size:32px;font-weight:300;font-family:'JetBrains Mono',monospace;line-height:1.05;margin-top:0;color:var(--text);letter-spacing:-1px}
+.kpi-v small{font-size:17px;font-weight:500;color:var(--muted);letter-spacing:0}
+.kpi-v.red{color:var(--neg-deep)}.kpi-v.green{color:var(--pos-deep)}.kpi-v.amb{color:var(--amber)}
+.kpi-foot{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.kpi-pill{font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.kpi-pill.red{background:var(--neg-bg);color:var(--neg-deep)}
+.kpi-pill.green{background:var(--pos-bg);color:var(--pos-deep)}
+.kpi-pill.amb{background:var(--amber-bg);color:var(--amber-deep)}
+.kpi-pill.neu{background:var(--neu-bg);color:var(--neu-deep)}
+.kpi-note{font-size:12px;color:var(--muted);line-height:1.4}
+.kpi-div2{height:1px;background:var(--border);margin:14px 0 12px}
+.kpi-conv{display:flex;align-items:baseline;gap:9px}
+.kpi-conv-v{font-family:'JetBrains Mono',monospace;font-weight:300;font-size:18px;color:var(--amber);line-height:1}
+.kpi-conv-l{font-size:12px;color:var(--muted)}
+.kpi-track{height:5px;background:#EDF1F5;border-radius:3px;overflow:hidden;margin-bottom:13px}
+.kpi-track i{display:block;height:100%;border-radius:3px;transition:width .4s ease}
+.kpi-mid{flex:1;display:flex;align-items:center}
+.kpi-sep{height:5px;display:flex;align-items:center;margin-bottom:13px}
+.kpi-sep i{display:block;width:100%;height:.5px;background:var(--border)}
+.kpi-sec{height:36px}
+.kpi.alert-ring::after{content:"";position:absolute;inset:0;border-radius:12px;border:1.5px solid var(--neg);opacity:.0;pointer-events:none}
+
+/* ===== Main zone (table + feed) ===== */
+.main-zone{display:grid;grid-template-columns:1fr;gap:22px;align-items:start}
+
+/* table */
+.rtbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.rtbl th{font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right;padding:0 9px 10px;vertical-align:bottom;line-height:1.3}
+.rtbl th.l{text-align:left}
+.rtbl th.l,.rtbl td.l{width:16%}
+.rtbl tfoot td{border-top:1.5px solid #CBD5E1;background:#F8FAFC;font-weight:500;padding-top:14px;padding-bottom:14px}
+.rtbl tfoot td.l{font-family:'Inter',sans-serif;font-weight:500;color:var(--text);font-size:13px}
+.rtbl td{padding:12px 9px;border-top:.5px solid var(--border);text-align:right;font-size:13px;font-weight:500;color:var(--text);vertical-align:middle;font-family:'JetBrains Mono',monospace;transition:background var(--t)}
+.rtbl td.l{text-align:left;font-family:'Inter',sans-serif}
+.rtbl tbody tr{transition:background var(--t)}
+.rtbl tbody tr:hover td{background:#F6F9FC}
+.rtbl tbody tr.dim{opacity:.5}
+.rtbl tbody tr.dim:hover{opacity:.72}
+.r-cop{display:flex;align-items:center;gap:10px}
+.r-cop .code{font-weight:500;font-size:13px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.r-cop .nm{font-size:11.5px;color:var(--muted);font-weight:500;font-family:'Inter',sans-serif}
+.r-cop-txt{display:flex;flex-direction:column;line-height:1.25}
+.badge-insuf{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:500;font-family:'Inter',sans-serif;background:var(--neu-bg);color:var(--neu-deep);border:.5px solid #CBD5E1;border-radius:5px;padding:2px 7px;margin-top:3px;width:fit-content}
+.cell-score{display:flex;align-items:center;justify-content:flex-end;gap:9px}
+.scoretrack{width:54px;height:6px;background:#EDF1F5;border-radius:3px;overflow:hidden;flex:0 0 54px}
+.scoretrack i{display:block;height:100%;border-radius:3px}
+.cell-neg b{font-weight:500}
+.cell-susp{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+.susp-dot{width:7px;height:7px;border-radius:50%;background:var(--neg);flex:0 0 7px}
+.susp-dot.zero{background:#CBD5E1}
+.conv-crit{color:var(--neg-deep)}
+.conv-warn{color:var(--amber)}
+
+/* ===== Second screen (3 cols) ===== */
+.second{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;align-items:stretch}
+
+/* distribution donut */
+.dist-tabs{display:inline-flex;gap:2px;background:#F1F5F9;border-radius:9px;padding:3px}
+.dist-tab{font-size:12px;font-weight:500;color:var(--muted);padding:5px 13px;border-radius:7px;transition:all var(--t)}
+.dist-tab:hover:not(.active){color:var(--text-2)}
+.dist-tab.active{background:#fff;color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(15,23,42,.12)}
+.dist-tfavg{font-size:11px;font-weight:400;color:var(--muted)}
+.dist-grid{display:grid;grid-template-columns:236px 1fr;gap:26px;align-items:stretch}
+.dist-left{display:flex;flex-direction:column;justify-content:center;align-items:center}
+.dist-donut{position:relative;width:220px;height:220px}
+.dist-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.dist-center-v{font-family:'JetBrains Mono',monospace;font-weight:300;font-size:26px;color:var(--text);line-height:1;letter-spacing:-.5px}
+.dist-center-l{font-size:10px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.06em}
+.dist-legend{display:flex;justify-content:center;gap:16px;margin-top:18px;flex-wrap:wrap}
+.dist-leg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-weight:500}
+.dist-leg .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+/* distribution score rows */
+.dist-right{align-self:center;width:100%}
+.dist-gridcols{display:grid;grid-template-columns:26px repeat(4,1fr);gap:14px;align-items:center}
+.dist-thead{padding-bottom:8px;border-bottom:.5px solid var(--border)}
+.dist-thead .h{font-size:10.5px;font-weight:500;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center}
+.dist-thead .h.tot{text-align:right}
+.dist-srow{padding:6px 0;border-top:.5px solid var(--border)}
+.dist-srow:first-of-type{border-top:none}
+.dist-badge{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;font-family:'JetBrains Mono',monospace}
+.dist-rv{font-size:15px;font-weight:400;font-family:'JetBrains Mono',monospace;text-align:center}
+.dist-scount{font-size:14px;font-weight:400;opacity:.85;font-family:'JetBrains Mono',monospace;text-align:right;white-space:nowrap}
+.dist-tfoot{margin-top:0;border-top:1.5px solid rgba(0,0,0,.15);background:rgba(24,95,165,.04);padding:10px 0}
+.dist-tfoot .ft{font-size:12px;font-weight:500;color:var(--text);font-family:'JetBrains Mono',monospace;text-align:center}
+.dist-tfoot .ft.lbl{text-align:left}
+.dist-tfoot .ft.tot{text-align:right}
+
+/* ===== Comments ===== */
+.cmt-filters{display:flex;flex-wrap:wrap;gap:7px}
+.cmt-f{font-size:11px;border-radius:20px;padding:4px 10px;border:.5px solid #CBD5E1;background:#fff;color:var(--text-2);font-weight:500;transition:all var(--t)}
+.cmt-f:hover{border-color:#94A3B8}
+.cmt-f.active{background:var(--text);color:#fff;border-color:var(--text)}
+.cmt-f.sc-neg{background:#FEECEC;color:#D64045;border-color:#FBD5D5}
+.cmt-f.sc-neu{background:#FFF3E0;color:#F0A500;border-color:#FCE3BE}
+.cmt-f.sc-pos{background:#EAF3DE;color:#3A9E6F;border-color:#D5E8BF}
+.cmt-f.active.sc-neg,.cmt-f.active.sc-neu,.cmt-f.active.sc-pos{background:var(--text);color:#fff;border-color:var(--text)}
+.cmt-gridcols{display:grid;grid-template-columns:70px 130px 110px 120px 1fr;gap:18px;align-items:start}
+.cmt-thead{padding-bottom:10px;border-bottom:.5px solid var(--border)}
+.cmt-thead span{font-size:10.5px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;font-weight:500}
+.cmt-row{padding:13px 0;border-bottom:.5px solid rgba(0,0,0,.06);transition:background var(--t)}
+.cmt-row:last-of-type{border-bottom:none}
+.cmt-row:hover{background:#F6F9FC}
+.cmt-reg{font-size:12px;font-weight:500;color:var(--text);font-family:'JetBrains Mono',monospace}
+.cmt-num{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.cmt-date{font-size:12px;font-weight:500;color:var(--text-2);font-family:'JetBrains Mono',monospace}
+.cmt-time{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.cmt-scores{display:flex;flex-direction:column;gap:5px}
+.cmt-score{display:flex;align-items:center;gap:8px}
+.cmt-score .lbl{font-size:10px;color:var(--muted);width:52px;flex:0 0 52px}
+.cmt-badge{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:500;font-size:11px;font-family:'JetBrains Mono',monospace}
+.cmt-text{font-size:13px;color:var(--text-2);line-height:1.55}
+.cmt-empty{padding:26px 0;text-align:center;color:var(--muted);font-size:13px}
+.cmt-pager{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding-top:14px;border-top:.5px solid rgba(0,0,0,.08);flex-wrap:wrap}
+.cmt-shown{font-size:12px;color:var(--muted)}
+.cmt-pages{display:flex;gap:7px}
+.cmt-pg{font-size:12px;padding:5px 12px;border:.5px solid #CBD5E1;border-radius:6px;background:#fff;color:var(--text-2);font-weight:500;transition:all var(--t)}
+.cmt-pg:hover:not(:disabled):not(.active){border-color:#94A3B8}
+.cmt-pg.active{background:var(--text);color:#fff;border-color:var(--text)}
+.cmt-pg:disabled{opacity:.35;cursor:not-allowed}
+
+/* tooltip */
+.tip{position:fixed;z-index:200;background:#0F172A;color:#fff;border-radius:8px;padding:8px 11px;font-size:11.5px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.28);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .15s ease,transform .15s ease;white-space:nowrap}
+.tip.show{opacity:1;transform:translateY(0)}
+.tip b{font-weight:500;font-family:'JetBrains Mono',monospace}
+.tip .tdim{color:#94A3B8}
+
+/* response segments */
+.rt-row{margin-bottom:0}
+.rt-row:last-child{margin-bottom:0}.rt-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.rt-name{font-size:12.5px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:7px}
+.rt-risk{font-size:9.5px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;background:var(--neg-bg);color:var(--neg-deep);border:.5px solid #FECACA;border-radius:5px;padding:1px 6px}
+.rt-selfbadge{font-size:10px;font-weight:500;background:#FEECEC;color:#D64045;border-radius:10px;padding:2px 8px}
+.resp-tabcount{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#D64045;color:#fff;font-size:10px;font-weight:500;font-family:'JetBrains Mono',monospace;margin-left:5px}
+.resp-alert{display:flex;gap:10px;align-items:flex-start;background:#FEECEC;border-radius:9px;padding:12px 14px;margin-bottom:16px}
+.resp-alert svg{width:17px;height:17px;stroke:#7B1A1A;stroke-width:2;fill:none;flex:0 0 17px;margin-top:1px}
+.resp-alert p{font-size:12.5px;color:#7B1A1A;line-height:1.5}
+.susp-gridcols{display:grid;grid-template-columns:80px 160px 120px 120px 1fr;gap:16px;align-items:center}
+.susp-thead{padding-bottom:10px;border-bottom:.5px solid var(--border)}
+.susp-thead span{font-size:10.5px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;font-weight:500}
+.susp-row{padding:11px 0;border-bottom:.5px solid rgba(0,0,0,.06);transition:background var(--t)}
+.susp-row:last-of-type{border-bottom:none}
+.susp-row:hover{background:#F6F9FC}
+.susp-reg{font-size:12px;font-weight:500;color:var(--text);font-family:'JetBrains Mono',monospace}
+.susp-num{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.susp-date{font-size:12px;color:var(--text-2);font-family:'JetBrains Mono',monospace}
+.susp-int{display:inline-flex;align-items:center;white-space:nowrap;background:#FEECEC;color:#D64045;border-radius:10px;font-size:11px;font-weight:500;padding:3px 9px;font-family:'JetBrains Mono',monospace}
+.susp-scores{display:flex;align-items:center;gap:10px}
+.susp-sc{display:flex;align-items:center;gap:5px}
+.susp-sc .lbl{font-size:10px;color:var(--muted)}
+.susp-badge{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:500;font-size:11px;font-family:'JetBrains Mono',monospace}
+.rt-bar{height:32px;background:#EDF1F5;border-radius:6px;position:relative}
+.rt-bar i{display:flex;align-items:center;height:100%;border-radius:6px;transition:width .5s ease;padding:0 11px;box-sizing:border-box;min-width:0}
+.rt-bar i span,.rt-out{font-size:13px;font-weight:500;font-style:normal;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.rt-bar i span{color:#fff}
+.rt-bar i span .pc{color:rgba(255,255,255,.75)}
+.rt-out{position:absolute;top:50%;transform:translateY(-50%)}
+/* response card fills height, bars distributed evenly */
+.resp-card{display:flex;flex-direction:column}
+#respRows{flex:1;display:flex;flex-direction:column;justify-content:space-between}
+.rt-note{background:var(--neg-bg);border-radius:9px;padding:10px 12px;margin-top:16px;display:flex;gap:9px;align-items:flex-start}
+.rt-note svg{width:15px;height:15px;stroke:var(--neg-deep);stroke-width:2;fill:none;flex:0 0 15px;margin-top:1px}
+.rt-note p{font-size:11.5px;color:var(--neg-deep);line-height:1.5}
+.rt-note b{font-weight:500}
+
+@media (max-width:1240px){
+  .main-zone{grid-template-columns:1fr}
+  .second{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ===== MAIN ===== -->
+  <div class="main">
+    <header class="topbar">
+      <h1>Удовлетворённость граждан</h1>
+      <div class="sp"></div>
+      <div class="tb-tools">
+        <div class="daterange">
+          <input type="text" class="dr-input" id="dateFrom" placeholder="Период с" onfocus="this.type='date'" onblur="if(!this.value)this.type='text'" />
+          <input type="text" class="dr-input" id="dateTo" placeholder="Период по" onfocus="this.type='date'" onblur="if(!this.value)this.type='text'" />
+          <button class="dr-apply" id="dateApply">Применить</button>
+          <button class="dr-reset" id="dateReset">Сбросить</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- KPI ROW -->
+      <section class="kpis" id="kpiRow"></section>
+
+      <!-- MAIN ZONE -->
+      <section class="main-zone">
+        <!-- table -->
+        <div class="card card-pad">
+          <div class="block-head">
+            <div>
+              <div class="block-title">Воронка и качество по каждому ЦОП</div>
+              <div class="block-sub">От выпуска ссылки до комментария · оценка качества и тональность</div>
+            </div>
+          </div>
+          <table class="rtbl">
+            <thead>
+              <tr>
+                <th class="l">Центр обработки</th>
+                <th>Ссылок</th>
+                <th>До 1-й оценки</th>
+                <th>До 2-й оценки</th>
+                <th>Комментарий</th>
+                <th>Средняя оценка</th>
+                <th>Позитив</th>
+                <th>Нейтральные</th>
+                <th>Негатив</th>
+              </tr>
+            </thead>
+            <tbody id="tblBody"></tbody>
+            <tfoot id="tblFoot"></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECOND SCREEN -->
+      <section class="second">
+        <!-- distribution -->
+        <div class="card card-pad">
+          <div class="block-head">
+            <div>
+              <div class="block-title">Оценки граждан по регионам</div>
+              <div class="block-sub" id="distSub">Качество и скорость · по каждому ЦОП</div>
+            </div>
+            <div class="dist-tabs" id="distTabs">
+              <button class="dist-tab active" data-tab="all">Общее</button>
+              <button class="dist-tab" data-tab="q">Качество</button>
+              <button class="dist-tab" data-tab="s">Скорость</button>
+            </div>
+          </div>
+          <div class="dist-grid">
+            <div class="dist-left">
+              <div class="dist-donut">
+                <canvas id="distChart" width="220" height="220"></canvas>
+                <div class="dist-center">
+                  <div class="dist-center-v" id="distCenterV">—</div>
+                  <div class="dist-center-l" id="distCenterL">всего оценок</div>
+                </div>
+              </div>
+            </div>
+            <div class="dist-right" id="distRows"></div>
+          </div>
+        </div>
+
+        <!-- response time -->
+        <div class="card card-pad resp-card">
+          <div class="block-head">
+            <div>
+              <div class="block-title" style="font-size:15px;font-weight:500">Интервал между созданием QR-ссылки сотрудником</div>
+              <div class="block-sub" style="font-size:12px;font-weight:400;color:var(--muted)">и моментом выставления оценки</div>
+            </div>
+            <div class="dist-tabs" id="respTabs">
+              <button class="dist-tab active" data-tab="chart">График</button>
+              <button class="dist-tab" data-tab="susp">До 1 часа</button>
+            </div>
+          </div>
+          <div id="respRows"></div>
+          <div id="respSusp" style="display:none">
+            <div class="susp-thead susp-gridcols">
+              <span>Регион</span>
+              <span>№ обращения</span>
+              <span>Дата</span>
+              <span>Интервал</span>
+              <span>Оценки</span>
+            </div>
+            <div id="respSuspRows"></div>
+            <div class="cmt-pager">
+              <div class="cmt-shown" id="suspShown">Показано 1–5 из 10</div>
+              <div class="cmt-pages" id="suspPages"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COMMENTS -->
+      <section class="card card-pad cmt-card">
+        <div class="block-head">
+          <div>
+            <div class="block-title">Комментарии граждан</div>
+            <div class="block-sub" style="display:flex;align-items:center;gap:5px"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:14px;color:var(--muted)"></i><span style="font-size:12px;color:var(--muted)">Текстовые отзывы к оценкам</span></div>
+          </div>
+          <div class="cmt-filters" id="cmtFilters">
+            <button class="cmt-f active" data-type="all" data-val="all">Все</button>
+            <button class="cmt-f sc-neg" data-type="score" data-val="12">1–2</button>
+            <button class="cmt-f sc-neu" data-type="score" data-val="3">3</button>
+            <button class="cmt-f sc-pos" data-type="score" data-val="45">4–5</button>
+            <button class="cmt-f" data-type="region" data-val="7000">7000</button>
+            <button class="cmt-f" data-type="region" data-val="1100">1100</button>
+            <button class="cmt-f" data-type="region" data-val="2542">2542</button>
+            <button class="cmt-f" data-type="region" data-val="2654">2654</button>
+          </div>
+        </div>
+        <div class="cmt-thead cmt-gridcols">
+          <span>Регион</span>
+          <span>№ обращения</span>
+          <span>Дата обращения</span>
+          <span>Оценки</span>
+          <span>Комментарий</span>
+        </div>
+        <div id="cmtRows"></div>
+        <div class="cmt-pager">
+          <div class="cmt-shown" id="cmtShown">Показано 1–15 из 15 комментариев</div>
+          <div class="cmt-pages">
+            <button class="cmt-pg" disabled>← Назад</button>
+            <button class="cmt-pg active">1</button>
+            <button class="cmt-pg">2</button>
+            <button class="cmt-pg">3</button>
+            <button class="cmt-pg">Вперёд →</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+/* ============ DATA MODEL ============ */
+// Per-ЦОП raw monthly (30d) data. dist index 0=1★ ... 4=5★
+const CENTERS = [
+  { code:'ЦОП 1', name:'Центральный', links:18400, dist:[80,100,90,236,820], susp:52,
+    distQ:[78,96,92,240,810], distS:[8,12,30,90,262],
+    resp:[ {c:410,avg:4.78}, {c:540,avg:4.30}, {c:256,avg:4.05}, {c:120,avg:3.80} ],
+    funnel:{ r2:402, comment:138 },
+    anom:[
+      {risk:'high', t:'31 оценка «5» с одного устройства за 6 минут', tm:'03:24'},
+      {risk:'high', t:'Всплеск активности в 03:20 — 44 оценки за час', tm:'03:20'},
+      {risk:'high', t:'IP-адрес инспекции совпал с 7 оценками', tm:'вчера'},
+      {risk:'amber', t:'Идентичный текст комментария у 9 оценок', tm:'2 дн.'},
+      {risk:'amber', t:'22 оценки быстрее 8 сек после открытия ссылки', tm:'2 дн.'},
+    ] },
+  { code:'ЦОП 2', name:'Северный', links:14100, dist:[30,40,74,230,980], susp:18,
+    distQ:[34,44,80,236,940], distS:[6,10,25,110,370],
+    resp:[ {c:300,avg:4.62}, {c:560,avg:4.55}, {c:340,avg:4.50}, {c:154,avg:4.40} ],
+    funnel:{ r2:521, comment:214 },
+    anom:[
+      {risk:'amber', t:'Конверсия выше нормы в 1.9× за 2 дня', tm:'вчера'},
+      {risk:'amber', t:'Рост доли «5» на 14 п.п. после жалобы', tm:'3 дн.'},
+    ] },
+  { code:'ЦОП 3', name:'Восточный', links:12800, dist:[40,50,99,230,720], susp:27,
+    distQ:[42,54,100,232,700], distS:[7,10,28,95,268],
+    resp:[ {c:280,avg:4.70}, {c:470,avg:4.40}, {c:269,avg:4.20}, {c:120,avg:3.90} ],
+    funnel:{ r2:408, comment:159 },
+    anom:[
+      {risk:'high', t:'12 оценок без перехода по QR (прямой ввод ссылки)', tm:'вчера'},
+      {risk:'amber', t:'Серия из 8 оценок «5» в нерабочее время', tm:'2 дн.'},
+      {risk:'amber', t:'Один телефон привязан к 5 разным обращениям', tm:'4 дн.'},
+    ] },
+  { code:'ЦОП 4', name:'Южный · пилот', links:410, dist:[0,0,0,1,3], susp:0,
+    distQ:[0,0,1,1,2], distS:[0,0,0,0,1],
+    resp:[ {c:2,avg:4.50}, {c:1,avg:5.00}, {c:1,avg:5.00}, {c:0,avg:0} ],
+    funnel:{ r2:1, comment:0 },
+    anom:[] },
+];
+
+const PERIODS = [
+  { id:'today', label:'Сегодня', f:0.045 },
+  { id:'7d', label:'7 дней', f:0.24 },
+  { id:'30d', label:'30 дней', f:1 },
+  { id:'90d', label:'90 дней', f:2.85 },
+];
+
+const TARGET_SCORE = 4.5;
+const COP_LABELS = {'ЦОП 1':'7000','ЦОП 2':'1100','ЦОП 3':'2542','ЦОП 4':'2654'};
+const CONV_TARGET = 12;   // %
+const CONV_CRIT = 6;      // % below = red
+
+/* ============ STATE ============ */
+let state = { region:'all', period:'30d', feedFilter:'all', distTab:'all' };
+
+/* ============ HELPERS ============ */
+const ru = n => Math.round(n).toLocaleString('ru-RU');
+const ratingsOf = c => c.dist.reduce((a,b)=>a+b,0);
+const scoreSum = c => c.dist.reduce((a,b,i)=>a+b*(i+1),0);
+const $ = s => document.querySelector(s);
+
+function scaleCount(n, f){ return Math.max(0, Math.round(n*f)); }
+
+// Build a computed view for a center (or aggregate) under a period factor
+function computeView(centers, f){
+  // aggregate dist
+  const dist=[0,0,0,0,0];
+  let links=0, susp=0;
+  const respAgg=[{c:0,s:0},{c:0,s:0},{c:0,s:0},{c:0,s:0}];
+  let fr2=0, fcomment=0;
+  centers.forEach(c=>{
+    links += scaleCount(c.links, f);
+    susp  += scaleCount(c.susp, f);
+    c.dist.forEach((d,i)=> dist[i]+=scaleCount(d,f));
+    c.resp.forEach((r,i)=>{ const cc=scaleCount(r.c,f); respAgg[i].c+=cc; respAgg[i].s+=cc*r.avg; });
+    fr2 += scaleCount(c.funnel.r2,f);
+    fcomment += scaleCount(c.funnel.comment,f);
+  });
+  const ratings = dist.reduce((a,b)=>a+b,0);
+  const ss = dist.reduce((a,b,i)=>a+b*(i+1),0);
+  const avg = ratings? ss/ratings : 0;
+  const neg = dist[0]+dist[1];
+  const pos = dist[3]+dist[4];
+  const conv = links? ratings/links*100 : 0;
+  const resp = respAgg.map(r=>({ c:r.c, avg:r.c? r.s/r.c : 0 }));
+  return { links, ratings, susp, dist, avg, neg, pos,
+           negShare: ratings? neg/ratings*100:0, posShare: ratings? pos/ratings*100:0,
+           neuShare: ratings? dist[2]/ratings*100:0,
+           conv, resp, funnel:{ links, r1:ratings, r2:fr2, comment:fcomment } };
+}
+
+function currentCenters(){
+  return state.region==='all' ? CENTERS : CENTERS.filter(c=>c.code.replace('ЦОП ','cop')===state.region || c.code===state.region);
+}
+function periodFactor(){ return PERIODS.find(p=>p.id===state.period).f; }
+
+/* ============ RENDER: KPI ============ */
+function renderKPI(){
+  const f = periodFactor();
+  const v = computeView(state.region==='all'?CENTERS:CENTERS.filter(c=>regKey(c)===state.region), f);
+
+  const convClass = v.conv < CONV_CRIT ? 'red' : (v.conv < CONV_TARGET ? 'amb' : 'green');
+  const convPill = v.conv < CONV_CRIT
+      ? `<span class="kpi-pill red">критически низкая</span>`
+      : (v.conv < CONV_TARGET ? `<span class="kpi-pill amb">ниже цели ${CONV_TARGET}%</span>` : `<span class="kpi-pill green">в норме</span>`);
+
+  const dScore = v.avg - TARGET_SCORE;
+  const scoreClass = v.avg >= TARGET_SCORE ? 'green' : (v.avg >= TARGET_SCORE-0.3 ? 'amb' : 'red');
+  const scorePill = dScore>=0
+      ? `<span class="kpi-pill green">↑ выше цели на ${dScore.toFixed(2)}</span>`
+      : `<span class="kpi-pill ${scoreClass==='red'?'red':'amb'}">↓ ниже цели на ${Math.abs(dScore).toFixed(2)}</span>`;
+
+  const cards = [
+    { l:'Выдано ссылок', ic:'link', cls:'', v:ru(v.links),
+      sec:`<span class="kpi-note">${ru(v.ratings)} оценок получено</span>` },
+    { l:'Оценок получено', ic:'arrow', cls:'', v:ru(v.ratings),
+      sec:`<div class="kpi-conv"><span class="kpi-conv-v">${v.conv.toFixed(1)}%</span><span class="kpi-conv-l">конверсия в оценку</span></div>` },
+    { l:'Средняя оценка', ic:'star', cls:'pos', v:v.avg.toFixed(2)+'<small>/5</small>', vcls:'amb',
+      track:{ w:v.avg/5*100, color: scoreClass==='green'?'var(--pos)':(scoreClass==='amb'?'var(--amber)':'var(--neg)') },
+      sec:`<span class="kpi-note"><span style="color:#3A9E6F;font-weight:500">${v.posShare.toFixed(0)}% позитивных</span> <span style="color:var(--muted)">·</span> <span style="color:var(--muted);font-weight:500">${v.neuShare.toFixed(0)}% нейтральных</span> <span style="color:var(--muted)">·</span> <span style="color:#D64045;font-weight:500">${v.negShare.toFixed(0)}% негативных</span></span>` },
+  ];
+  const icons = {
+    link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    arrow:'<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+    star:'<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2z"/>',
+    alert:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  };
+  $('#kpiRow').innerHTML = cards.map(c=>`
+    <div class="kpi ${c.cls.includes('warn')?'warn':''}">
+      <div class="kpi-top">
+        <div class="kpi-l">${c.l}</div>
+        ${c.ic?`<div class="kpi-ic ${c.cls.replace('warn','').trim()}"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${icons[c.ic]}</svg></div>`:''}
+      </div>
+      <div class="kpi-mid"><div class="kpi-v ${c.vcls||''}">${c.v}</div></div>
+      <div class="kpi-botgrp">
+        ${c.track?`<div class="kpi-track"><i style="width:${c.track.w}%;background:${c.track.color}"></i></div>`:`<div class="kpi-sep"><i></i></div>`}
+        <div class="kpi-sec">${c.sec||''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function regKey(c){ return 'cop'+c.code.split(' ')[1]; }
+
+/* ============ RENDER: TABLE ============ */
+function renderTable(){
+  const f = periodFactor();
+  const rows = CENTERS.map(c=>{
+    const tot = ratingsOf(c);
+    const ratings = scaleCount(tot, f);
+    const links = scaleCount(c.links, f);
+    const susp = scaleCount(c.susp, f);
+    const ss = c.dist.reduce((a,b,i)=>a+b*(i+1),0);
+    const avg = tot? ss/tot:0;
+    const conv = links? ratings/links*100:0;
+    const r2pct = c.links? c.funnel.r2/c.links*100:0;
+    const commPct = c.links? c.funnel.comment/c.links*100:0;
+    const posS = Math.round(tot? (c.dist[3]+c.dist[4])/tot*100:0);
+    const negS = Math.round(tot? (c.dist[0]+c.dist[1])/tot*100:0);
+    const neuS = Math.max(0, 100 - posS - negS);
+    const insuf = tot < 5;
+    const dim = (state.region!=='all' && regKey(c)!==state.region);
+    const convCls = conv<CONV_CRIT?'conv-crit':(conv<CONV_TARGET?'conv-warn':'');
+    const scoreColor = avg>=4.5?'#3A9E6F':(avg>=3.5?'#F0A500':'#D64045');
+    return { c, label: COP_LABELS[c.code]||c.code, ratings, links, susp, avg, conv, r2pct, commPct, posS, neuS, negS, insuf, dim, convCls, scoreColor };
+  });
+  $('#tblBody').innerHTML = rows.map(r=>`
+    <tr class="${r.dim?'dim':''}">
+      <td class="l">
+        <div class="r-cop">
+          <div class="r-cop-txt">
+            <span class="code">${r.label}</span>
+          </div>
+        </div>
+      </td>
+      <td>${ru(r.links)}</td>
+      <td class="${r.convCls}">${r.conv.toFixed(1)}%</td>
+      <td>${r.r2pct.toFixed(1)}%</td>
+      <td>${r.commPct.toFixed(1)}%</td>
+      <td><span style="color:${r.scoreColor};font-weight:500">${r.avg.toFixed(2)}</span></td>
+      <td><span style="color:#3A9E6F;font-weight:500">${r.posS}%</span></td>
+      <td><span style="color:var(--muted);font-weight:500">${r.neuS}%</span></td>
+      <td><span style="color:#D64045;font-weight:500">${r.negS}%</span></td>
+    </tr>`).join('');
+
+  // Итого — summary footer
+  const T = { links:0, susp:0, linksRaw:0, ratingsRaw:0, r2Raw:0, commRaw:0, ssRaw:0, negRaw:0, posRaw:0 };
+  CENTERS.forEach(c=>{
+    T.links += scaleCount(c.links, f);
+    T.susp  += scaleCount(c.susp, f);
+    T.linksRaw += c.links;
+    T.ratingsRaw += ratingsOf(c);
+    T.r2Raw += c.funnel.r2;
+    T.commRaw += c.funnel.comment;
+    T.ssRaw += c.dist.reduce((a,b,i)=>a+b*(i+1),0);
+    T.negRaw += c.dist[0]+c.dist[1];
+    T.posRaw += c.dist[3]+c.dist[4];
+  });
+  const tConv = T.linksRaw? T.ratingsRaw/T.linksRaw*100:0;
+  const tR2 = T.linksRaw? T.r2Raw/T.linksRaw*100:0;
+  const tComm = T.linksRaw? T.commRaw/T.linksRaw*100:0;
+  const tAvg = T.ratingsRaw? T.ssRaw/T.ratingsRaw:0;
+  const tPos = Math.round(T.ratingsRaw? T.posRaw/T.ratingsRaw*100:0);
+  const tNegS = Math.round(T.ratingsRaw? T.negRaw/T.ratingsRaw*100:0);
+  const tNeu = Math.max(0, 100 - tPos - tNegS);
+  const tScoreColor = tAvg>=4.5?'#3A9E6F':(tAvg>=3.5?'#F0A500':'#D64045');
+  $('#tblFoot').innerHTML = `
+    <tr class="rtbl-total">
+      <td class="l">Итого</td>
+      <td>${ru(T.links)}</td>
+      <td>${tConv.toFixed(1)}%</td>
+      <td>${tR2.toFixed(1)}%</td>
+      <td>${tComm.toFixed(1)}%</td>
+      <td><span style="color:${tScoreColor};font-weight:500">${tAvg.toFixed(2)}</span></td>
+      <td><span style="color:#3A9E6F;font-weight:500">${tPos}%</span></td>
+      <td><span style="color:var(--muted);font-weight:500">${tNeu}%</span></td>
+      <td><span style="color:#D64045;font-weight:500">${tNegS}%</span></td>
+    </tr>`;
+}
+function plural(n,a,b,c){ n=Math.abs(n)%100; const n1=n%10; if(n>10&&n<20)return c; if(n1>1&&n1<5)return b; if(n1===1)return a; return c; }
+
+/* ============ RENDER: DISTRIBUTION ============ */
+let distChart = null;
+// score color ramps: index 0 = score 1 ... index 4 = score 5
+const SCORE_COLORS = { 5:'#3A9E6F', 4:'#7DC142', 3:'#F0A500', 2:'#E07030', 1:'#D64045' };
+function mixWhite(hex, t){ // t = fraction toward white
+  const n = parseInt(hex.slice(1),16);
+  const r = n>>16, g = (n>>8)&255, b = n&255;
+  const mr = Math.round(r+(255-r)*t), mg = Math.round(g+(255-g)*t), mb = Math.round(b+(255-b)*t);
+  return `rgb(${mr},${mg},${mb})`;
+}
+const DIST_TABS = {
+  all: { field:'dist',  label:'всего оценок', sub:'Качество и скорость · по каждому ЦОП' },
+  q:   { field:'distQ', label:'качество',     sub:'1-я оценка — качество рассмотрения обращения' },
+  s:   { field:'distS', label:'скорость',     sub:'2-я оценка — скорость рассмотрения обращения' },
+};
+function renderDist(){
+  const f = periodFactor();
+  const centers = CENTERS;
+  const tab = DIST_TABS[state.distTab] || DIST_TABS.all;
+  const fld = tab.field;
+  const showAvg = state.distTab !== 'all';   // Качество/Скорость show avg in Итого
+
+  $('#distSub').textContent = tab.sub;
+  $('#distCenterL').textContent = tab.label;
+
+  // per-score totals + per-region breakdown (score 5..1), scaled by period — all regions in fixed order
+  const scores = [5,4,3,2,1].map(score=>{
+    const idx = score-1;
+    const regions = centers.map(c=>({ label: COP_LABELS[c.code]||c.code, count: scaleCount(c[fld][idx], f) }));
+    const total = regions.reduce((a,r)=>a+r.count,0);
+    return { score, color:SCORE_COLORS[score], regions, total };
+  });
+  const grand = scores.reduce((a,s)=>a+s.total,0);
+
+  $('#distCenterV').textContent = ru(grand);
+
+  // ----- donut (5 segments) -----
+  const segData = scores.map(s=>s.total);            // order 5..1
+  const segColors = scores.map(s=>s.color);
+  const segLabels = scores.map(s=>String(s.score));
+  const data = {
+    labels: segLabels,
+    datasets:[{ data: segData, backgroundColor: segColors, borderWidth:2, borderColor:'#fff' }]
+  };
+  if(distChart){
+    distChart.data = data; distChart.update();
+  } else {
+    distChart = new Chart(document.getElementById('distChart'), {
+      type:'doughnut', data,
+      options:{ cutout:'72%', animation:false, responsive:false,
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label:ctx=>` ${ctx.label} балл — ${ru(ctx.parsed)} ${plural(ctx.parsed,'оценка','оценки','оценок')}` } } } }
+    });
+  }
+
+  // ----- right column: header + per-score regional columns -----
+  const head = `
+    <div class="dist-thead dist-gridcols">
+      <span></span>
+      <span class="h">7000</span>
+      <span class="h">1100</span>
+      <span class="h">2542</span>
+      <span class="h">2654</span>
+    </div>`;
+  const body = scores.map(s=>{
+    const cells = s.regions.map(r=>
+      `<span class="dist-rv" style="color:${r.count?s.color:'#ccc'}">${r.count?ru(r.count):'—'}</span>`
+    ).join('');
+    return `
+    <div class="dist-srow dist-gridcols">
+      <div class="dist-badge" style="background:${s.color};color:#fff">${s.score}</div>
+      ${cells}
+    </div>`;
+  }).join('');
+
+  // ----- footer: column sums (+ avg for quality/speed) -----
+  const nReg = scores[0].regions.length;
+  const regTotals = [], regAvgs = [];
+  for(let i=0;i<nReg;i++){
+    let sum=0, ss=0;
+    scores.forEach(s=>{ sum += s.regions[i].count; ss += s.regions[i].count*s.score; });
+    regTotals.push(sum);
+    regAvgs.push(sum? ss/sum : 0);
+  }
+  const footCells = regTotals.map((n,i)=>
+    `<span class="ft">${ru(n)}${n ? ` <span class="dist-tfavg">(${regAvgs[i].toFixed(2)})</span>` : ''}</span>`
+  ).join('');
+  $('#distRows').innerHTML = head + body + `
+    <div class="dist-tfoot dist-gridcols">
+      <span class="ft lbl">Итого</span>
+      ${footCells}
+    </div>`;
+}
+
+/* ============ RENDER: RESPONSE ============ */
+const RESP_LABELS = ['до 1 часа','1–8 часов','8–24 часа','более 24 часов'];
+const RESP_COLORS = ['#D64045','#3A9E6F','#F0A500','#9E9E9E'];
+function renderResp(){
+  const f = periodFactor();
+  const centers = state.region==='all'?CENTERS:CENTERS.filter(c=>regKey(c)===state.region);
+  const v = computeView(centers, f);
+  const tot = v.resp.reduce((a,r)=>a+r.c,0)||1;
+  const maxc = Math.max(...v.resp.map(r=>r.c),1);
+  $('#respRows').innerHTML = v.resp.map((r,i)=>{
+    const pct = r.c/maxc*100;
+    const share = Math.round(r.c/tot*100);
+    const inside = pct >= 22;
+    const lbl = `${ru(r.c)} <span class="pc">· ${share}%</span>`;
+    return `
+    <div class="rt-row">
+      <div class="rt-top">
+        <div class="rt-name">${RESP_LABELS[i]}${i===0?' <span class="rt-selfbadge">возможная самооценка</span>':''}</div>
+      </div>
+      <div class="rt-bar">
+        <i style="width:${pct}%;background:${RESP_COLORS[i]}">${inside?`<span>${lbl}</span>`:''}</i>
+        ${inside?'':`<span class="rt-out" style="left:calc(${pct}% + 6px);color:${RESP_COLORS[i]}">${ru(r.c)} · ${share}%</span>`}
+      </div>
+    </div>`;
+  }).join('');
+  renderSusp();
+}
+
+/* ============ RENDER: SUSPICIOUS (до 1 часа) ============ */
+const SUSP_RATINGS = [
+  { reg:'7000', num:'№ 4471-23', date:'02.06.2026', min:3,  q:5, s:5 },
+  { reg:'2542', num:'№ 1180-23', date:'31.05.2026', min:6,  q:1, s:1 },
+  { reg:'1100', num:'№ 8830-23', date:'29.05.2026', min:12, q:5, s:5 },
+  { reg:'7000', num:'№ 4502-23', date:'28.05.2026', min:18, q:5, s:4 },
+  { reg:'2654', num:'№ 0094-23', date:'27.05.2026', min:24, q:1, s:2 },
+  { reg:'1100', num:'№ 8861-23', date:'26.05.2026', min:31, q:5, s:5 },
+  { reg:'2542', num:'№ 1205-23', date:'25.05.2026', min:38, q:2, s:1 },
+  { reg:'7000', num:'№ 4530-23', date:'24.05.2026', min:44, q:5, s:5 },
+  { reg:'1100', num:'№ 8902-23', date:'23.05.2026', min:51, q:4, s:5 },
+  { reg:'2542', num:'№ 1233-23', date:'22.05.2026', min:57, q:1, s:1 },
+];
+function renderSusp(){
+  const n = SUSP_RATINGS.length;
+  renderSuspPage();
+}
+const SUSP_PER = 5;
+let suspPage = 1;
+function renderSuspPage(){
+  const n = SUSP_RATINGS.length;
+  const pages = Math.max(1, Math.ceil(n/SUSP_PER));
+  if(suspPage>pages) suspPage = pages;
+  const start = (suspPage-1)*SUSP_PER;
+  const slice = SUSP_RATINGS.slice(start, start+SUSP_PER);
+  $('#respSuspRows').innerHTML = slice.map(r=>`
+    <div class="susp-row susp-gridcols">
+      <span class="susp-reg">${r.reg}</span>
+      <span class="susp-num">${r.num}</span>
+      <span class="susp-date">${r.date}</span>
+      <span><span class="susp-int">${r.min} мин</span></span>
+      <div class="susp-scores">
+        <span class="susp-sc"><span class="lbl">Кач.</span><span class="susp-badge" style="background:${SCORE_COLORS[r.q]}">${r.q}</span></span>
+        <span class="susp-sc"><span class="lbl">Ск.</span><span class="susp-badge" style="background:${SCORE_COLORS[r.s]}">${r.s}</span></span>
+      </div>
+    </div>`).join('');
+  $('#suspShown').textContent = `Показано ${start+1}–${start+slice.length} из ${n}`;
+  let pg = `<button class="cmt-pg" data-pg="prev" ${suspPage===1?'disabled':''}>← Назад</button>`;
+  for(let p=1;p<=pages;p++) pg += `<button class="cmt-pg ${p===suspPage?'active':''}" data-pg="${p}">${p}</button>`;
+  pg += `<button class="cmt-pg" data-pg="next" ${suspPage===pages?'disabled':''}>Вперёд →</button>`;
+  $('#suspPages').innerHTML = pg;
+}
+
+/* ============ FILTERS UI ============ */
+function buildMenus(){ /* period dropdown removed */ }
+
+function renderAll(){
+  renderKPI(); renderTable(); renderDist(); renderResp(); buildMenus();
+}
+
+/* ============ RENDER: COMMENTS ============ */
+const COMMENTS = [
+  { reg:'7000', num:'№ 4471-23', date:'02.06.2026', time:'14:12', q:1, s:2,
+    txt:'Простоял в очереди больше часа, талон вызвали с опозданием. На вопросы отвечали неохотно, пришлось приходить повторно.' },
+  { reg:'2542', num:'№ 1180-23', date:'31.05.2026', time:'09:48', q:1, s:1,
+    txt:'Заявление потеряли, попросили подать документы заново. Никто не извинился и не объяснил, что произошло.' },
+  { reg:'1100', num:'№ 8830-23', date:'29.05.2026', time:'16:30', q:2, s:3,
+    txt:'Вопрос решили, но формально. Сотрудник торопился, часть деталей пришлось уточнять самостоятельно по телефону.' },
+  { reg:'7000', num:'№ 4502-23', date:'28.05.2026', time:'11:05', q:3, s:4,
+    txt:'В целом нормально, но навигация в зале запутанная — не сразу понял, к какому окну подходить.' },
+  { reg:'2654', num:'№ 0094-23', date:'27.05.2026', time:'13:21', q:4, s:5,
+    txt:'Обслужили быстро и вежливо, подсказали по электронной подаче. Замечаний нет.' },
+  { reg:'1100', num:'№ 8861-23', date:'26.05.2026', time:'10:14', q:5, s:5,
+    txt:'Отличная работа специалиста — всё объяснили по шагам, помогли заполнить форму. Спасибо за внимательность.' },
+];
+let cmtFilter = { type:'all', val:'all' };
+
+function renderComments(){
+  let rows = [...COMMENTS];
+  if(cmtFilter.type==='score'){
+    const set = cmtFilter.val.split('').map(Number);
+    rows = rows.filter(r=>set.includes(r.q));
+  } else if(cmtFilter.type==='region'){
+    rows = rows.filter(r=>r.reg===cmtFilter.val);
+  }
+  // worst score first (by Качество)
+  rows.sort((a,b)=>a.q-b.q);
+
+  if(rows.length===0){
+    $('#cmtRows').innerHTML = `<div class="cmt-empty">Нет комментариев по выбранному фильтру</div>`;
+  } else {
+    $('#cmtRows').innerHTML = rows.map(r=>`
+      <div class="cmt-row cmt-gridcols">
+        <div class="cmt-reg">${r.reg}</div>
+        <div class="cmt-num">${r.num}</div>
+        <div><div class="cmt-date">${r.date}</div></div>
+        <div class="cmt-scores">
+          <div class="cmt-score"><span class="lbl">Качество</span><span class="cmt-badge" style="background:${SCORE_COLORS[r.q]}">${r.q}</span></div>
+          <div class="cmt-score"><span class="lbl">Скорость</span><span class="cmt-badge" style="background:${SCORE_COLORS[r.s]}">${r.s}</span></div>
+        </div>
+        <div class="cmt-text">${r.txt}</div>
+      </div>`).join('');
+  }
+  const n = rows.length;
+  $('#cmtShown').textContent = n===0 ? 'Нет комментариев' : `Показано 1–${n} из ${n} комментариев`;
+}
+
+/* ============ WIRING ============ */
+function setUpdated(){ /* timestamp removed */ }
+
+document.querySelectorAll('.flt').forEach(flt=>{
+  const btn = flt.querySelector('.flt-btn');
+  btn.addEventListener('click', e=>{
+    e.stopPropagation();
+    const wasOpen = flt.classList.contains('open');
+    document.querySelectorAll('.flt').forEach(f=>f.classList.remove('open'));
+    if(!wasOpen) flt.classList.add('open');
+  });
+  flt.querySelector('.flt-menu').addEventListener('click', e=>{
+    const opt = e.target.closest('.flt-opt'); if(!opt) return;
+    const val = opt.dataset.val;
+    if(flt.dataset.flt==='period'){ state.period=val; $('#periodVal').textContent = PERIODS.find(p=>p.id===val).label; }
+    flt.classList.remove('open');
+    renderAll();
+  });
+});
+document.addEventListener('click', ()=> document.querySelectorAll('.flt').forEach(f=>f.classList.remove('open')) );
+
+// tooltips for distribution
+const tip = $('#tip');
+document.addEventListener('mousemove', e=>{
+  const el = e.target.closest('[data-tip]');
+  if(el){
+    tip.innerHTML = el.dataset.tip;
+    tip.classList.add('show');
+    tip.style.left = (e.clientX+14)+'px';
+    tip.style.top = (e.clientY-10)+'px';
+  } else { tip.classList.remove('show'); }
+});
+
+/* ============ INIT ============ */
+// distribution tabs
+$('#distTabs').addEventListener('click', e=>{
+  const b = e.target.closest('.dist-tab'); if(!b) return;
+  document.querySelectorAll('.dist-tab').forEach(x=>x.classList.toggle('active', x===b));
+  state.distTab = b.dataset.tab;
+  renderDist();
+});
+// comment filters
+$('#cmtFilters').addEventListener('click', e=>{
+  const b = e.target.closest('.cmt-f'); if(!b) return;
+  document.querySelectorAll('.cmt-f').forEach(x=>x.classList.toggle('active', x===b));
+  cmtFilter = { type:b.dataset.type, val:b.dataset.val };
+  renderComments();
+});
+
+setUpdated();
+renderAll();
+renderComments();
+// date range filter
+$('#dateReset').addEventListener('click', ()=>{ $('#dateFrom').value=''; $('#dateTo').value=''; });
+// response tabs (chart / suspicious table)
+$('#respTabs').addEventListener('click', e=>{
+  const b = e.target.closest('.dist-tab'); if(!b) return;
+  document.querySelectorAll('#respTabs .dist-tab').forEach(x=>x.classList.toggle('active', x===b));
+  const susp = b.dataset.tab==='susp';
+  $('#respRows').style.display = susp ? 'none' : '';
+  $('#respSusp').style.display = susp ? '' : 'none';
+});
+$('#suspPages').addEventListener('click', e=>{
+  const b = e.target.closest('.cmt-pg'); if(!b || b.disabled) return;
+  const v = b.dataset.pg;
+  const pages = Math.max(1, Math.ceil(SUSP_RATINGS.length/SUSP_PER));
+  if(v==='prev') suspPage = Math.max(1, suspPage-1);
+  else if(v==='next') suspPage = Math.min(pages, suspPage+1);
+  else suspPage = +v;
+  renderSuspPage();
+});
+</script>
+</body>
+</html>
